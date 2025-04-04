@@ -1,5 +1,5 @@
 
-import { Home, Users, Calendar, MessageSquare, BarChart4, Settings, MenuIcon } from "lucide-react";
+import { Home, Users, Calendar, MessageSquare, BarChart4, Settings } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 const menuItems = [
   {
@@ -59,11 +60,7 @@ export function AppSidebar() {
           </div>
           <span className="text-lg font-bold">AI CRM Spark</span>
         </div>
-        <SidebarTrigger asChild>
-          <button className="p-2 rounded-md hover:bg-muted">
-            <MenuIcon className="h-5 w-5" />
-          </button>
-        </SidebarTrigger>
+        <SidebarTrigger />
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
