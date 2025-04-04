@@ -11,6 +11,7 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
+import { Link } from "react-router-dom";
 
 export interface Customer {
   id: string;
@@ -77,7 +78,9 @@ export function CustomerCard({ customer }: CustomerCardProps) {
         </div>
       </CardContent>
       <CardFooter className="bg-muted/50 px-6 py-3 flex justify-between">
-        <Button variant="outline" size="sm">Contact</Button>
+        <Button variant="outline" size="sm" asChild>
+          <Link to={`/customers/${customer.id}`}>View Details</Link>
+        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon">
@@ -85,7 +88,9 @@ export function CustomerCard({ customer }: CustomerCardProps) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem>View Details</DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to={`/customers/${customer.id}`}>View Details</Link>
+            </DropdownMenuItem>
             <DropdownMenuItem>Edit Customer</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>

@@ -8,6 +8,7 @@ import { AppLayout } from "./components/layout/AppLayout";
 
 import Index from "./pages/Index";
 import Customers from "./pages/Customers";
+import CustomerDetail from "./pages/CustomerDetail";
 import AIAssistantPage from "./pages/AIAssistantPage";
 import Calendar from "./pages/Calendar";
 import Analytics from "./pages/Analytics";
@@ -25,6 +26,11 @@ const App = () => (
           <Route path="/customers" element={
             <AppLayout>
               <Customers />
+            </AppLayout>
+          } />
+          <Route path="/customers/:id" element={
+            <AppLayout>
+              <CustomerDetail />
             </AppLayout>
           } />
           <Route path="/ai-assistant" element={
