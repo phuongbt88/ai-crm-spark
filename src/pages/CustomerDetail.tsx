@@ -16,6 +16,7 @@ import { AICustomerInsights } from "@/components/customers/AICustomerInsights";
 import { EmailCustomer } from "@/components/customers/EmailCustomer";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Database } from "@/integrations/supabase/types";
 
 // Mock customer data (would be fetched from API in a real app)
 const customersData: Customer[] = [
@@ -50,25 +51,15 @@ const customersData: Customer[] = [
   },
 ];
 
-interface CustomerNotes {
-  id: string;
-  date: string;
-  content: string;
-}
-
-interface CustomerActivity {
-  id: string;
-  date: string;
-  action: string;
-  description: string;
-}
+type CustomerNote = Database['public']['Tables']['customer_notes']['Row'];
+type CustomerActivity = Database['public']['Tables']['customer_activities']['Row'];
 
 export default function CustomerDetail() {
   const { id } = useParams<{ id: string }>();
   const customer = customersData.find(c => c.id === id) || customersData[0];
   const { toast } = useToast();
   
-  const [notes, setNotes] = useState<CustomerNotes[]>([]);
+  const [notes, setNotes] = useState<CustomerNote[]>([]);
   const [activities, setActivities] = useState<CustomerActivity[]>([]);
   const [newNote, setNewNote] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -99,20 +90,11 @@ export default function CustomerDetail() {
       if (activitiesError) throw activitiesError;
       
       if (notesData) {
-        setNotes(notesData.map(note => ({
-          id: note.id,
-          content: note.content,
-          date: new Date(note.created_at).toISOString().split('T')[0]
-        })));
+        setNotes(notesData as CustomerNote[]);
       }
       
       if (activitiesData) {
-        setActivities(activitiesData.map(activity => ({
-          id: activity.id,
-          action: activity.action,
-          description: activity.description,
-          date: new Date(activity.created_at).toISOString().split('T')[0]
-        })));
+        setActivities(activitiesData as CustomerActivity[]);
       }
     } catch (error) {
       console.error('Error fetching customer data:', error);
@@ -146,25 +128,22 @@ export default function CustomerDetail() {
         .insert({
           customer_id: id,
           content: newNote
-        })
+        } as Database['public']['Tables']['customer_notes']['Insert'])
         .select();
       
       if (error) throw error;
       
       // Update UI optimistically
-      const newNoteObj: CustomerNotes = {
-        id: data?.[0]?.id || Date.now().toString(),
-        date: new Date().toISOString().split('T')[0],
-        content: newNote
-      };
-      
-      setNotes([newNoteObj, ...notes]);
-      setNewNote("");
-      
-      toast({
-        title: 'Note saved',
-        description: 'Your note has been saved successfully',
-      });
+      if (data && data[0]) {
+        const newNoteObj: CustomerNote = data[0] as CustomerNote;
+        setNotes([newNoteObj, ...notes]);
+        setNewNote("");
+        
+        toast({
+          title: 'Note saved',
+          description: 'Your note has been saved successfully',
+        });
+      }
     } catch (error) {
       console.error('Error adding note:', error);
       toast({
@@ -286,7 +265,9 @@ export default function CustomerDetail() {
                           <div className="flex-1">
                             <div className="flex justify-between">
                               <p className="font-medium">{activity.action}</p>
-                              <time className="text-sm text-muted-foreground">{activity.date}</time>
+                              <time className="text-sm text-muted-foreground">
+                                {new Date(activity.created_at).toLocaleDateString()}
+                              </time>
                             </div>
                             <p className="text-sm text-muted-foreground mt-1">{activity.description}</p>
                           </div>
@@ -334,7 +315,9 @@ export default function CustomerDetail() {
                       {notes.map((note) => (
                         <div key={note.id} className="flex flex-col gap-1 border-b pb-4 last:border-0">
                           <div className="flex justify-between items-center">
-                            <p className="text-sm text-muted-foreground">Date: {note.date}</p>
+                            <p className="text-sm text-muted-foreground">
+                              Date: {new Date(note.created_at).toLocaleDateString()}
+                            </p>
                           </div>
                           <p>{note.content}</p>
                         </div>

@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Mail, Loader2, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Database } from "@/integrations/supabase/types";
 
 interface EmailCustomerProps {
   customerId: string;
@@ -71,12 +72,13 @@ export function EmailCustomer({ customerId, customerName, customerEmail }: Email
       }
 
       // Log email activity
-      await supabase.from("customer_activities")
+      await supabase
+        .from("customer_activities")
         .insert({
           customer_id: customerId,
           action: "Email",
           description: `Sent email: ${subject}`
-        });
+        } as Database['public']['Tables']['customer_activities']['Insert']);
 
       toast({
         title: "Email sent",
