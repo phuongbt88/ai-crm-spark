@@ -4,19 +4,28 @@ import { CustomerFilters } from "@/components/customers/CustomerFilters";
 import { CustomerCard, Customer } from "@/components/customers/CustomerCard";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Database } from "@/integrations/supabase/types";
 
 export default function Customers() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedStatus, setSelectedStatus] = useState("all");
   const { toast } = useToast();
   
   const fetchCustomers = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      
+      let query = supabase
         .from("customers")
         .select("*");
+      
+      if (selectedStatus !== "all") {
+        query = query.eq("status", selectedStatus);
+      }
+      
+      const { data, error } = await query;
       
       if (error) {
         throw error;
@@ -30,7 +39,7 @@ export default function Customers() {
         company: customer.company || "",
         status: (customer.status as "active" | "inactive" | "lead") || "lead",
         lastContact: customer.last_contact ? new Date(customer.last_contact).toLocaleDateString() : undefined,
-        initials: customer.initials || "",
+        initials: customer.initials || customer.name.substring(0, 2).toUpperCase(),
         avatar: customer.avatar_url,
       }));
       
@@ -50,7 +59,7 @@ export default function Customers() {
   
   useEffect(() => {
     fetchCustomers();
-  }, []);
+  }, [selectedStatus]);
   
   const handleSearch = (query: string) => {
     const lowercaseQuery = query.toLowerCase();
@@ -72,9 +81,17 @@ export default function Customers() {
     fetchCustomers();
   };
   
+  const handleFilterChange = (status: string) => {
+    setSelectedStatus(status);
+  };
+  
   return (
     <div className="container p-4 sm:p-6 space-y-6">
-      <CustomerFilters onSearch={handleSearch} onCustomerAdded={handleCustomerAdded} />
+      <CustomerFilters 
+        onSearch={handleSearch} 
+        onCustomerAdded={handleCustomerAdded} 
+        onFilterChange={handleFilterChange}
+      />
       
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

@@ -18,59 +18,52 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 
-// Mock customer data (would be fetched from API in a real app)
-const customersData: Customer[] = [
-  {
-    id: "1",
-    name: "Jane Cooper",
-    email: "jane.cooper@example.com",
-    phone: "+1 (555) 123-4567",
-    company: "Acme Inc.",
-    status: "active",
-    lastContact: "2 days ago",
-    initials: "JC",
-  },
-  {
-    id: "2",
-    name: "Robert Fox",
-    email: "robert.fox@example.com",
-    phone: "+1 (555) 234-5678",
-    company: "Global Tech",
-    status: "lead",
-    initials: "RF",
-  },
-  {
-    id: "3",
-    name: "Esther Howard",
-    email: "esther.howard@example.com",
-    phone: "+1 (555) 345-6789",
-    company: "Innovate Solutions",
-    status: "active",
-    lastContact: "1 week ago",
-    initials: "EH",
-  },
-];
-
 type CustomerNote = Database['public']['Tables']['customer_notes']['Row'];
 type CustomerActivity = Database['public']['Tables']['customer_activities']['Row'];
 
 export default function CustomerDetail() {
   const { id } = useParams<{ id: string }>();
-  const customer = customersData.find(c => c.id === id) || customersData[0];
   const { toast } = useToast();
   
+  const [customer, setCustomer] = useState<Customer | null>(null);
   const [notes, setNotes] = useState<CustomerNote[]>([]);
   const [activities, setActivities] = useState<CustomerActivity[]>([]);
   const [newNote, setNewNote] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
+    if (!id) return;
     fetchCustomerData();
   }, [id]);
   
   const fetchCustomerData = async () => {
     setIsLoading(true);
     try {
+      // Fetch customer details
+      const { data: customerData, error: customerError } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (customerError) throw customerError;
+      
+      if (customerData) {
+        const formattedCustomer: Customer = {
+          id: customerData.id,
+          name: customerData.name,
+          email: customerData.email,
+          phone: customerData.phone || "",
+          company: customerData.company || "",
+          status: (customerData.status as "active" | "inactive" | "lead") || "lead",
+          lastContact: customerData.last_contact ? new Date(customerData.last_contact).toLocaleDateString() : undefined,
+          initials: customerData.initials || customerData.name.substring(0, 2).toUpperCase(),
+          avatar: customerData.avatar_url,
+        };
+        
+        setCustomer(formattedCustomer);
+      }
+      
       // Fetch notes
       const { data: notesData, error: notesError } = await supabase
         .from('customer_notes')
@@ -89,13 +82,9 @@ export default function CustomerDetail() {
         
       if (activitiesError) throw activitiesError;
       
-      if (notesData) {
-        setNotes(notesData as CustomerNote[]);
-      }
+      setNotes(notesData as CustomerNote[]);
+      setActivities(activitiesData as CustomerActivity[]);
       
-      if (activitiesData) {
-        setActivities(activitiesData as CustomerActivity[]);
-      }
     } catch (error) {
       console.error('Error fetching customer data:', error);
       toast({
@@ -108,7 +97,9 @@ export default function CustomerDetail() {
     }
   };
 
-  const getStatusColor = (status: Customer["status"]) => {
+  const getStatusColor = (status?: Customer["status"]) => {
+    if (!status) return "";
+    
     switch (status) {
       case "active":
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
@@ -120,7 +111,7 @@ export default function CustomerDetail() {
   };
 
   const handleAddNote = async () => {
-    if (!newNote.trim()) return;
+    if (!newNote.trim() || !id) return;
     
     try {
       const { data, error } = await supabase
@@ -135,7 +126,7 @@ export default function CustomerDetail() {
       
       // Update UI optimistically
       if (data && data[0]) {
-        const newNoteObj: CustomerNote = data[0] as CustomerNote;
+        const newNoteObj = data[0] as CustomerNote;
         setNotes([newNoteObj, ...notes]);
         setNewNote("");
         
@@ -153,6 +144,35 @@ export default function CustomerDetail() {
       });
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="container p-4 sm:p-6 flex justify-center items-center min-h-[60vh]">
+        <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!customer) {
+    return (
+      <div className="container p-4 sm:p-6">
+        <div className="flex items-center gap-2 mb-6">
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/customers">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back to Customers
+            </Link>
+          </Button>
+        </div>
+        <div className="text-center p-10">
+          <h3 className="text-2xl font-medium">Customer not found</h3>
+          <p className="text-muted-foreground mt-2">
+            The customer you're looking for does not exist or has been deleted.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container p-4 sm:p-6 space-y-6">
@@ -187,11 +207,11 @@ export default function CustomerDetail() {
               </div>
               <div className="grid grid-cols-[20px_1fr] items-center gap-3">
                 <Phone className="h-5 w-5 text-muted-foreground" />
-                <span>{customer.phone}</span>
+                <span>{customer.phone || "Not provided"}</span>
               </div>
               <div className="grid grid-cols-[20px_1fr] items-center gap-3">
                 <Building className="h-5 w-5 text-muted-foreground" />
-                <span>{customer.company}</span>
+                <span>{customer.company || "Not provided"}</span>
               </div>
               {customer.lastContact && (
                 <div className="grid grid-cols-[20px_1fr] items-center gap-3">
@@ -306,11 +326,7 @@ export default function CustomerDetail() {
                   <CardTitle className="text-lg">Notes History</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {isLoading ? (
-                    <div className="flex justify-center py-8">
-                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : notes.length > 0 ? (
+                  {notes.length > 0 ? (
                     <div className="space-y-6">
                       {notes.map((note) => (
                         <div key={note.id} className="flex flex-col gap-1 border-b pb-4 last:border-0">
