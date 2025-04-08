@@ -44,7 +44,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`Using RESEND_API_KEY: ${resendApiKey ? "Key is present" : "Key is missing!"}`);
     
     const emailOptions = {
-      from: "CRM <onboarding@resend.dev>", // You can change this after domain verification
+      from: "CRM <customer@mail.coka.ai>", // You can change this after domain verification
       to: [to],
       subject: subject,
       html: `
