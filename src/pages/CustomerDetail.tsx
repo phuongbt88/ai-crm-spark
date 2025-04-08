@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -13,6 +13,9 @@ import {
 } from "lucide-react";
 import { Customer } from "@/components/customers/CustomerCard";
 import { AICustomerInsights } from "@/components/customers/AICustomerInsights";
+import { EmailCustomer } from "@/components/customers/EmailCustomer";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 // Mock customer data (would be fetched from API in a real app)
 const customersData: Customer[] = [
@@ -63,42 +66,66 @@ interface CustomerActivity {
 export default function CustomerDetail() {
   const { id } = useParams<{ id: string }>();
   const customer = customersData.find(c => c.id === id) || customersData[0];
+  const { toast } = useToast();
   
-  const [notes, setNotes] = useState<CustomerNotes[]>([
-    {
-      id: "1",
-      date: "2025-03-28",
-      content: "Initial meeting about new project requirements."
-    },
-    {
-      id: "2",
-      date: "2025-04-02",
-      content: "Follow-up call to discuss pricing and timeline."
-    }
-  ]);
-  
+  const [notes, setNotes] = useState<CustomerNotes[]>([]);
+  const [activities, setActivities] = useState<CustomerActivity[]>([]);
   const [newNote, setNewNote] = useState("");
-  const [activities, setActivities] = useState<CustomerActivity[]>([
-    {
-      id: "1",
-      date: "2025-04-03",
-      action: "Email",
-      description: "Sent proposal for new project"
-    },
-    {
-      id: "2",
-      date: "2025-03-30",
-      action: "Call",
-      description: "Discussed contract terms"
-    },
-    {
-      id: "3", 
-      date: "2025-03-28",
-      action: "Meeting",
-      description: "Initial consultation"
-    }
-  ]);
+  const [isLoading, setIsLoading] = useState(false);
   
+  useEffect(() => {
+    fetchCustomerData();
+  }, [id]);
+  
+  const fetchCustomerData = async () => {
+    setIsLoading(true);
+    try {
+      // Fetch notes
+      const { data: notesData, error: notesError } = await supabase
+        .from('customer_notes')
+        .select('*')
+        .eq('customer_id', id)
+        .order('created_at', { ascending: false });
+      
+      if (notesError) throw notesError;
+      
+      // Fetch activities
+      const { data: activitiesData, error: activitiesError } = await supabase
+        .from('customer_activities')
+        .select('*')
+        .eq('customer_id', id)
+        .order('created_at', { ascending: false });
+        
+      if (activitiesError) throw activitiesError;
+      
+      if (notesData) {
+        setNotes(notesData.map(note => ({
+          id: note.id,
+          content: note.content,
+          date: new Date(note.created_at).toISOString().split('T')[0]
+        })));
+      }
+      
+      if (activitiesData) {
+        setActivities(activitiesData.map(activity => ({
+          id: activity.id,
+          action: activity.action,
+          description: activity.description,
+          date: new Date(activity.created_at).toISOString().split('T')[0]
+        })));
+      }
+    } catch (error) {
+      console.error('Error fetching customer data:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load customer data',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const getStatusColor = (status: Customer["status"]) => {
     switch (status) {
       case "active":
@@ -110,17 +137,42 @@ export default function CustomerDetail() {
     }
   };
 
-  const handleAddNote = () => {
+  const handleAddNote = async () => {
     if (!newNote.trim()) return;
     
-    const newNoteObj: CustomerNotes = {
-      id: Date.now().toString(),
-      date: new Date().toISOString().split('T')[0],
-      content: newNote
-    };
-    
-    setNotes([newNoteObj, ...notes]);
-    setNewNote("");
+    try {
+      const { data, error } = await supabase
+        .from('customer_notes')
+        .insert({
+          customer_id: id,
+          content: newNote
+        })
+        .select();
+      
+      if (error) throw error;
+      
+      // Update UI optimistically
+      const newNoteObj: CustomerNotes = {
+        id: data?.[0]?.id || Date.now().toString(),
+        date: new Date().toISOString().split('T')[0],
+        content: newNote
+      };
+      
+      setNotes([newNoteObj, ...notes]);
+      setNewNote("");
+      
+      toast({
+        title: 'Note saved',
+        description: 'Your note has been saved successfully',
+      });
+    } catch (error) {
+      console.error('Error adding note:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save note',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -174,10 +226,11 @@ export default function CustomerDetail() {
                 <Phone className="h-4 w-4 mr-2" />
                 Call
               </Button>
-              <Button size="sm">
-                <Mail className="h-4 w-4 mr-2" />
-                Email
-              </Button>
+              <EmailCustomer 
+                customerId={customer.id} 
+                customerName={customer.name} 
+                customerEmail={customer.email} 
+              />
             </CardFooter>
           </Card>
           
@@ -217,24 +270,32 @@ export default function CustomerDetail() {
                   <CardTitle className="text-lg">Recent Activity</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-6">
-                    {activities.map((activity) => (
-                      <div key={activity.id} className="flex items-start gap-4">
-                        <div className="rounded-full bg-muted p-2 h-10 w-10 flex items-center justify-center">
-                          {activity.action === "Email" && <Mail className="h-5 w-5" />}
-                          {activity.action === "Call" && <Phone className="h-5 w-5" />}
-                          {activity.action === "Meeting" && <Calendar className="h-5 w-5" />}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex justify-between">
-                            <p className="font-medium">{activity.action}</p>
-                            <time className="text-sm text-muted-foreground">{activity.date}</time>
+                  {isLoading ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : activities.length > 0 ? (
+                    <div className="space-y-6">
+                      {activities.map((activity) => (
+                        <div key={activity.id} className="flex items-start gap-4">
+                          <div className="rounded-full bg-muted p-2 h-10 w-10 flex items-center justify-center">
+                            {activity.action === "Email" && <Mail className="h-5 w-5" />}
+                            {activity.action === "Call" && <Phone className="h-5 w-5" />}
+                            {activity.action === "Meeting" && <Calendar className="h-5 w-5" />}
                           </div>
-                          <p className="text-sm text-muted-foreground mt-1">{activity.description}</p>
+                          <div className="flex-1">
+                            <div className="flex justify-between">
+                              <p className="font-medium">{activity.action}</p>
+                              <time className="text-sm text-muted-foreground">{activity.date}</time>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">{activity.description}</p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-center py-8 text-muted-foreground">No activity records found</p>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -264,16 +325,24 @@ export default function CustomerDetail() {
                   <CardTitle className="text-lg">Notes History</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-6">
-                    {notes.map((note) => (
-                      <div key={note.id} className="flex flex-col gap-1 border-b pb-4 last:border-0">
-                        <div className="flex justify-between items-center">
-                          <p className="text-sm text-muted-foreground">Date: {note.date}</p>
+                  {isLoading ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : notes.length > 0 ? (
+                    <div className="space-y-6">
+                      {notes.map((note) => (
+                        <div key={note.id} className="flex flex-col gap-1 border-b pb-4 last:border-0">
+                          <div className="flex justify-between items-center">
+                            <p className="text-sm text-muted-foreground">Date: {note.date}</p>
+                          </div>
+                          <p>{note.content}</p>
                         </div>
-                        <p>{note.content}</p>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-center py-8 text-muted-foreground">No notes found</p>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
