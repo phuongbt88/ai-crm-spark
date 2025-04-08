@@ -10,20 +10,13 @@ import { Badge } from "@/components/ui/badge";
 import { Mail, ArrowUp, ArrowDown, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
+import { Database } from "@/integrations/supabase/types";
 
 interface EmailHistoryProps {
   customerId: string;
 }
 
-interface EmailRecord {
-  id: string;
-  subject: string;
-  message: string;
-  direction: 'sent' | 'received';
-  status: 'sent' | 'delivered' | 'failed';
-  reply_to: string | null;
-  created_at: string;
-}
+type EmailRecord = Database['public']['Tables']['email_history']['Row'];
 
 export function EmailHistory({ customerId }: EmailHistoryProps) {
   const [emails, setEmails] = useState<EmailRecord[]>([]);
@@ -41,7 +34,7 @@ export function EmailHistory({ customerId }: EmailHistoryProps) {
         
         if (error) throw error;
         
-        setEmails(data as EmailRecord[]);
+        setEmails(data || []);
       } catch (error) {
         console.error('Error fetching email history:', error);
       } finally {

@@ -138,6 +138,47 @@ export type Database = {
         }
         Relationships: []
       }
+      email_history: {
+        Row: {
+          created_at: string
+          customer_id: string | null
+          direction: string
+          id: string
+          message: string
+          reply_to: string | null
+          status: string
+          subject: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id?: string | null
+          direction: string
+          id?: string
+          message: string
+          reply_to?: string | null
+          status?: string
+          subject: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string | null
+          direction?: string
+          id?: string
+          message?: string
+          reply_to?: string | null
+          status?: string
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_history_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
