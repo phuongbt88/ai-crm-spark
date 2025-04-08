@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -9,11 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { 
   User, Mail, Phone, Building, Calendar, Clock, ArrowLeft,
-  MessageSquare, BarChart, FileText, Send, Sparkles, Loader2
+  MessageSquare, BarChart, FileText, Send, Sparkles, Loader2,
+  Inbox
 } from "lucide-react";
 import { Customer } from "@/components/customers/CustomerCard";
 import { AICustomerInsights } from "@/components/customers/AICustomerInsights";
 import { EmailCustomer } from "@/components/customers/EmailCustomer";
+import { EmailHistory } from "@/components/customers/EmailHistory";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
@@ -39,7 +40,6 @@ export default function CustomerDetail() {
   const fetchCustomerData = async () => {
     setIsLoading(true);
     try {
-      // Fetch customer details
       const { data: customerData, error: customerError } = await supabase
         .from('customers')
         .select('*')
@@ -64,7 +64,6 @@ export default function CustomerDetail() {
         setCustomer(formattedCustomer);
       }
       
-      // Fetch notes
       const { data: notesData, error: notesError } = await supabase
         .from('customer_notes')
         .select('*')
@@ -73,7 +72,6 @@ export default function CustomerDetail() {
       
       if (notesError) throw notesError;
       
-      // Fetch activities
       const { data: activitiesData, error: activitiesError } = await supabase
         .from('customer_activities')
         .select('*')
@@ -124,7 +122,6 @@ export default function CustomerDetail() {
       
       if (error) throw error;
       
-      // Update UI optimistically
       if (data && data[0]) {
         const newNoteObj = data[0] as CustomerNote;
         setNotes([newNoteObj, ...notes]);
@@ -253,6 +250,10 @@ export default function CustomerDetail() {
                 <Calendar className="h-4 w-4" />
                 <span>Activity</span>
               </TabsTrigger>
+              <TabsTrigger value="emails" className="flex items-center gap-2">
+                <Inbox className="h-4 w-4" />
+                <span>Emails</span>
+              </TabsTrigger>
               <TabsTrigger value="notes" className="flex items-center gap-2">
                 <FileText className="h-4 w-4" />
                 <span>Notes</span>
@@ -299,6 +300,10 @@ export default function CustomerDetail() {
                   )}
                 </CardContent>
               </Card>
+            </TabsContent>
+            
+            <TabsContent value="emails" className="space-y-4">
+              <EmailHistory customerId={customer.id} />
             </TabsContent>
             
             <TabsContent value="notes" className="space-y-4">

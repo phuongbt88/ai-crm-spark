@@ -62,6 +62,7 @@ export function EmailCustomer({ customerId, customerName, customerEmail }: Email
           subject,
           message,
           customerName,
+          customerId,
           replyTo: replyTo || undefined
         }
       });
