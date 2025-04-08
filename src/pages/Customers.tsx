@@ -1,100 +1,65 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CustomerFilters } from "@/components/customers/CustomerFilters";
 import { CustomerCard, Customer } from "@/components/customers/CustomerCard";
-
-const customerData: Customer[] = [
-  {
-    id: "1",
-    name: "Jane Cooper",
-    email: "jane.cooper@example.com",
-    phone: "+1 (555) 123-4567",
-    company: "Acme Inc.",
-    status: "active",
-    lastContact: "2 days ago",
-    initials: "JC",
-  },
-  {
-    id: "2",
-    name: "Robert Fox",
-    email: "robert.fox@example.com",
-    phone: "+1 (555) 234-5678",
-    company: "Global Tech",
-    status: "lead",
-    initials: "RF",
-  },
-  {
-    id: "3",
-    name: "Esther Howard",
-    email: "esther.howard@example.com",
-    phone: "+1 (555) 345-6789",
-    company: "Innovate Solutions",
-    status: "active",
-    lastContact: "1 week ago",
-    initials: "EH",
-  },
-  {
-    id: "4",
-    name: "Darlene Robertson",
-    email: "darlene.robertson@example.com",
-    phone: "+1 (555) 456-7890",
-    company: "Tech Dynamics",
-    status: "inactive",
-    lastContact: "3 weeks ago",
-    initials: "DR",
-  },
-  {
-    id: "5",
-    name: "Guy Hawkins",
-    email: "guy.hawkins@example.com",
-    phone: "+1 (555) 567-8901",
-    company: "Future Enterprises",
-    status: "active",
-    lastContact: "Yesterday",
-    initials: "GH",
-  },
-  {
-    id: "6",
-    name: "Brooklyn Simmons",
-    email: "brooklyn.simmons@example.com",
-    phone: "+1 (555) 678-9012",
-    company: "Digital Frontiers",
-    status: "lead",
-    initials: "BS",
-  },
-  {
-    id: "7",
-    name: "Cameron Williamson",
-    email: "cameron.williamson@example.com",
-    phone: "+1 (555) 789-0123",
-    company: "Bright Systems",
-    status: "active",
-    lastContact: "3 days ago",
-    initials: "CW",
-  },
-  {
-    id: "8",
-    name: "Leslie Alexander",
-    email: "leslie.alexander@example.com",
-    phone: "+1 (555) 890-1234",
-    company: "Neo Technologies",
-    status: "inactive",
-    lastContact: "1 month ago",
-    initials: "LA",
-  },
-];
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Customers() {
-  const [filteredCustomers, setFilteredCustomers] = useState(customerData);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+  
+  const fetchCustomers = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("customers")
+        .select("*");
+      
+      if (error) {
+        throw error;
+      }
+      
+      const formattedCustomers = data.map((customer): Customer => ({
+        id: customer.id,
+        name: customer.name,
+        email: customer.email,
+        phone: customer.phone || "",
+        company: customer.company || "",
+        status: (customer.status as "active" | "inactive" | "lead") || "lead",
+        lastContact: customer.last_contact ? new Date(customer.last_contact).toLocaleDateString() : undefined,
+        initials: customer.initials || "",
+        avatar: customer.avatar_url,
+      }));
+      
+      setCustomers(formattedCustomers);
+      setFilteredCustomers(formattedCustomers);
+    } catch (error) {
+      console.error("Lỗi khi tải dữ liệu khách hàng:", error);
+      toast({
+        title: "Không thể tải danh sách khách hàng",
+        description: "Đã xảy ra lỗi khi tải dữ liệu. Vui lòng làm mới trang.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
   
   const handleSearch = (query: string) => {
     const lowercaseQuery = query.toLowerCase();
     if (!query.trim()) {
-      setFilteredCustomers(customerData);
+      setFilteredCustomers(customers);
       return;
     }
     
-    const filtered = customerData.filter((customer) => 
+    const filtered = customers.filter((customer) => 
       customer.name.toLowerCase().includes(lowercaseQuery) ||
       customer.email.toLowerCase().includes(lowercaseQuery) ||
       customer.company.toLowerCase().includes(lowercaseQuery)
@@ -102,16 +67,52 @@ export default function Customers() {
     
     setFilteredCustomers(filtered);
   };
+
+  const handleCustomerAdded = () => {
+    fetchCustomers();
+  };
   
   return (
     <div className="container p-4 sm:p-6 space-y-6">
-      <CustomerFilters onSearch={handleSearch} />
+      <CustomerFilters onSearch={handleSearch} onCustomerAdded={handleCustomerAdded} />
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredCustomers.map((customer) => (
-          <CustomerCard key={customer.id} customer={customer} />
-        ))}
-      </div>
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, index) => (
+            <div 
+              key={index} 
+              className="border rounded-lg p-6 animate-pulse h-60"
+            >
+              <div className="flex items-center">
+                <div className="w-12 h-12 rounded-full bg-gray-200"></div>
+                <div className="ml-3 space-y-1 flex-1">
+                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                </div>
+                <div className="h-6 bg-gray-200 rounded w-16"></div>
+              </div>
+              <div className="mt-4 space-y-3">
+                <div className="h-3 bg-gray-200 rounded w-full"></div>
+                <div className="h-3 bg-gray-200 rounded w-full"></div>
+                <div className="h-3 bg-gray-200 rounded w-5/6"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : filteredCustomers.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredCustomers.map((customer) => (
+            <CustomerCard key={customer.id} customer={customer} />
+          ))}
+        </div>
+      ) : (
+        <div className="text-center p-10">
+          <h3 className="text-lg font-medium">Không tìm thấy khách hàng</h3>
+          <p className="text-muted-foreground mt-1">
+            Không có khách hàng nào khớp với tìm kiếm của bạn.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

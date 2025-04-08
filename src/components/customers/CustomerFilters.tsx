@@ -1,6 +1,5 @@
 
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { 
   Select, 
   SelectContent, 
@@ -8,17 +7,19 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Search, Plus, Filter } from "lucide-react";
+import { Search, Filter } from "lucide-react";
+import { AddCustomerDialog } from "@/components/customers/AddCustomerDialog";
 
 interface CustomerFiltersProps {
   onSearch: (query: string) => void;
+  onCustomerAdded?: () => void;
 }
 
-export function CustomerFilters({ onSearch }: CustomerFiltersProps) {
+export function CustomerFilters({ onSearch, onCustomerAdded }: CustomerFiltersProps) {
   return (
     <div className="bg-background border rounded-lg p-4 space-y-4">
       <div className="flex items-center gap-2">
-        <h2 className="text-xl font-semibold">Customers</h2>
+        <h2 className="text-xl font-semibold">Khách hàng</h2>
         <span className="bg-muted rounded-full px-2 py-0.5 text-xs">210</span>
       </div>
       
@@ -26,7 +27,7 @@ export function CustomerFilters({ onSearch }: CustomerFiltersProps) {
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input 
-            placeholder="Search customers..." 
+            placeholder="Tìm kiếm khách hàng..." 
             className="pl-8" 
             onChange={(e) => onSearch(e.target.value)}
           />
@@ -36,20 +37,17 @@ export function CustomerFilters({ onSearch }: CustomerFiltersProps) {
           <Select defaultValue="all">
             <SelectTrigger className="w-[130px]">
               <Filter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder="Trạng thái" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-              <SelectItem value="lead">Lead</SelectItem>
+              <SelectItem value="all">Tất cả</SelectItem>
+              <SelectItem value="active">Đang hoạt động</SelectItem>
+              <SelectItem value="inactive">Không hoạt động</SelectItem>
+              <SelectItem value="lead">Tiềm năng</SelectItem>
             </SelectContent>
           </Select>
           
-          <Button className="gap-1">
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Add Customer</span>
-          </Button>
+          <AddCustomerDialog onCustomerAdded={onCustomerAdded || (() => {})} />
         </div>
       </div>
     </div>
