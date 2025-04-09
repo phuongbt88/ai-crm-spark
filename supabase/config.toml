@@ -3,3 +3,7 @@ project_id = "qrwxwxirouscsuznvtdr"
 
 [functions.send-email]
 verify_jwt = false
+
+[functions.receive-email]
+verify_jwt = false
+

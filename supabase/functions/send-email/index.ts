@@ -27,6 +27,14 @@ interface EmailRequest {
   replyTo?: string;
 }
 
+interface IncomingEmailRequest {
+  from: string;
+  to: string;
+  subject: string;
+  message: string;
+  customerId: string;
+}
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -34,7 +42,42 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { to, subject, message, customerName, customerId, replyTo }: EmailRequest = await req.json();
+    const requestData = await req.json();
+    
+    // Handle incoming customer emails (replies)
+    if (requestData.type === "inbound") {
+      const { from, to, subject, message, customerId }: IncomingEmailRequest = requestData;
+      
+      console.log(`Received incoming email from ${from}`);
+      
+      // Record the incoming email in the database
+      const { error: dbError } = await supabaseFunctionClient
+        .from("email_history")
+        .insert({
+          customer_id: customerId,
+          subject,
+          message,
+          direction: 'received',
+          reply_to: from,
+          status: 'delivered'
+        });
+        
+      if (dbError) {
+        console.error("Error recording incoming email in database:", dbError);
+        throw dbError;
+      }
+      
+      return new Response(
+        JSON.stringify({ success: true, message: "Incoming email recorded" }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+    
+    // Handle outgoing emails (default case)
+    const { to, subject, message, customerName, customerId, replyTo }: EmailRequest = requestData;
 
     if (!to || !subject || !message) {
       return new Response(
@@ -61,6 +104,7 @@ const handler = async (req: Request): Promise<Response> => {
           </div>
           <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #666; font-size: 12px;">
             This email was sent from the AI CRM Spark platform.
+            <p>You can reply directly to this email with your feedback.</p>
           </div>
         </div>
       `,

@@ -7,10 +7,12 @@ import {
   CardTitle 
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Mail, ArrowUp, ArrowDown, Loader2 } from "lucide-react";
+import { Mail, ArrowUp, ArrowDown, Loader2, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { EmailDetail } from "./EmailDetail";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 interface EmailHistoryProps {
   customerId: string;
@@ -29,31 +31,37 @@ interface EmailRecord {
 }
 
 export function EmailHistory({ customerId }: EmailHistoryProps) {
+  const { toast } = useToast();
   const [emails, setEmails] = useState<EmailRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEmail, setSelectedEmail] = useState<EmailRecord | null>(null);
 
-  useEffect(() => {
-    const fetchEmails = async () => {
-      setLoading(true);
-      try {
-        // Use a more generic approach with the Supabase client
-        const { data, error } = await supabase
-          .from('email_history')
-          .select('*')
-          .eq('customer_id', customerId)
-          .order('created_at', { ascending: false });
-        
-        if (error) throw error;
-        
-        setEmails(data as EmailRecord[] || []);
-      } catch (error) {
-        console.error('Error fetching email history:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchEmails = async () => {
+    setLoading(true);
+    try {
+      // Use a more generic approach with the Supabase client
+      const { data, error } = await supabase
+        .from('email_history')
+        .select('*')
+        .eq('customer_id', customerId)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      setEmails(data as EmailRecord[] || []);
+    } catch (error) {
+      console.error('Error fetching email history:', error);
+      toast({
+        title: "Error loading emails",
+        description: "Could not load email history. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchEmails();
   }, [customerId]);
   
@@ -66,10 +74,22 @@ export function EmailHistory({ customerId }: EmailHistoryProps) {
     }
   };
 
+  const handleRefresh = () => {
+    fetchEmails();
+    toast({
+      title: "Refreshing emails",
+      description: "Checking for new emails..."
+    });
+  };
+
   return (
     <Card>
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-2 flex flex-row items-center justify-between">
         <CardTitle className="text-lg">Email History</CardTitle>
+        <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={loading}>
+          <RefreshCw className={`h-4 w-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
       </CardHeader>
       <CardContent>
         {loading ? (
@@ -111,7 +131,7 @@ export function EmailHistory({ customerId }: EmailHistoryProps) {
                 </div>
                 {email.reply_to && (
                   <div className="mt-2 text-xs text-muted-foreground">
-                    Reply to: {email.reply_to}
+                    {email.direction === 'sent' ? 'Reply to:' : 'From:'} {email.reply_to}
                   </div>
                 )}
               </div>

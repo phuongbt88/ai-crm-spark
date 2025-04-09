@@ -62,7 +62,7 @@ export function EmailDetail({ email, isOpen, onClose }: EmailDetailProps) {
           </div>
           <div className="flex items-center justify-between mt-2">
             <Badge className={getStatusColor(email.status)}>
-              {email.status}
+              {email.direction === 'received' ? 'Received' : email.status}
             </Badge>
             <DialogDescription>
               {formatDistanceToNow(new Date(email.created_at), { addSuffix: true })}
@@ -71,11 +71,15 @@ export function EmailDetail({ email, isOpen, onClose }: EmailDetailProps) {
         </DialogHeader>
 
         <div className="border-t pt-4 mt-2">
-          <div className="whitespace-pre-wrap">{email.message}</div>
+          <div className="whitespace-pre-wrap">{email.message.replace(/<[^>]*>/g, '')}</div>
           
           {email.reply_to && (
             <div className="mt-4 pt-4 border-t text-sm text-muted-foreground">
-              <strong>Reply to:</strong> {email.reply_to}
+              {email.direction === 'sent' ? (
+                <><strong>Reply to:</strong> {email.reply_to}</>
+              ) : (
+                <><strong>From:</strong> {email.reply_to}</>
+              )}
             </div>
           )}
         </div>
