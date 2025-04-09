@@ -10,13 +10,22 @@ import { Badge } from "@/components/ui/badge";
 import { Mail, ArrowUp, ArrowDown, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
-import { Database } from "@/integrations/supabase/types";
 
 interface EmailHistoryProps {
   customerId: string;
 }
 
-type EmailRecord = Database['public']['Tables']['email_history']['Row'];
+// Define our own interface for email records since it's not in the TypeScript types yet
+interface EmailRecord {
+  id: string;
+  customer_id: string;
+  subject: string;
+  message: string;
+  direction: 'sent' | 'received';
+  status: string;
+  reply_to: string | null;
+  created_at: string;
+}
 
 export function EmailHistory({ customerId }: EmailHistoryProps) {
   const [emails, setEmails] = useState<EmailRecord[]>([]);
@@ -26,6 +35,7 @@ export function EmailHistory({ customerId }: EmailHistoryProps) {
     const fetchEmails = async () => {
       setLoading(true);
       try {
+        // Use a more generic approach with the Supabase client
         const { data, error } = await supabase
           .from('email_history')
           .select('*')
@@ -34,7 +44,7 @@ export function EmailHistory({ customerId }: EmailHistoryProps) {
         
         if (error) throw error;
         
-        setEmails(data || []);
+        setEmails(data as EmailRecord[] || []);
       } catch (error) {
         console.error('Error fetching email history:', error);
       } finally {

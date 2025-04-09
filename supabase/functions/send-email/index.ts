@@ -1,10 +1,16 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
+import { createClient } from 'npm:@supabase/supabase-js';
 
 // Initialize Resend with API key from env variable
 const resendApiKey = Deno.env.get("RESEND_API_KEY");
 const resend = new Resend(resendApiKey);
+
+// Create a Supabase client specially for this function
+const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const supabaseFunctionClient = createClient(supabaseUrl, supabaseServiceKey);
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -65,7 +71,6 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const emailResponse = await resend.emails.send(emailOptions);
-
     console.log("Email sent successfully:", emailResponse);
     
     // Record the email in the database
@@ -102,14 +107,5 @@ const handler = async (req: Request): Promise<Response> => {
     );
   }
 };
-
-// Create a Supabase client specially for this function
-import { createClient } from 'npm:@supabase/supabase-js';
-
-const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-
-const supabaseFunctionClient = createClient(supabaseUrl, supabaseServiceKey);
 
 serve(handler);
