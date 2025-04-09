@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Mail, ArrowUp, ArrowDown, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
+import { EmailDetail } from "./EmailDetail";
 
 interface EmailHistoryProps {
   customerId: string;
@@ -30,6 +31,7 @@ interface EmailRecord {
 export function EmailHistory({ customerId }: EmailHistoryProps) {
   const [emails, setEmails] = useState<EmailRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedEmail, setSelectedEmail] = useState<EmailRecord | null>(null);
 
   useEffect(() => {
     const fetchEmails = async () => {
@@ -77,7 +79,11 @@ export function EmailHistory({ customerId }: EmailHistoryProps) {
         ) : emails.length > 0 ? (
           <div className="space-y-4">
             {emails.map((email) => (
-              <div key={email.id} className="border rounded-lg p-4">
+              <div 
+                key={email.id} 
+                className="border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => setSelectedEmail(email)}
+              >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2">
                     <div className="rounded-full p-2 bg-muted">
@@ -115,6 +121,12 @@ export function EmailHistory({ customerId }: EmailHistoryProps) {
           <p className="text-center py-8 text-muted-foreground">No email history found</p>
         )}
       </CardContent>
+
+      <EmailDetail 
+        email={selectedEmail} 
+        isOpen={!!selectedEmail} 
+        onClose={() => setSelectedEmail(null)} 
+      />
     </Card>
   );
 }
